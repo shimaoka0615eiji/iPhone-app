@@ -2,6 +2,10 @@
 
 スマホのブラウザで動く、釣った魚の写真を魚拓風の画像にするアプリです。
 
+- **公開URL（GitHub Pages）**：https://shimaoka0615eiji.github.io/iPhone-app/
+  - `index.html` と付属ファイル（`sw.js`, `manifest.webmanifest`, `icon-*.png`）で動きます。
+  - 一度開くと端末に保存され、ホーム画面に追加すればオフラインでも起動できます。
+  - `qr-safari.png` … このURLを開くQRコード
 - **`gyotaku.html`** … アプリ本体（この1ファイルだけで動きます。約10MB）
   - 背景除去AI（U²-Netp）と ONNX Runtime Web を内蔵しているため、**オフラインで動作**します。
   - 写真は端末内で処理され、外部へ送信されません。

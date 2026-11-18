@@ -3,7 +3,7 @@
 
 使い方: python3 build.py <onnxruntime-web/dist ディレクトリ> <u2netp.onnx>
 """
-import base64, gzip, re, sys, pathlib
+import base64, gzip, hashlib, re, shutil, sys, pathlib
 
 dist = pathlib.Path(sys.argv[1])
 model = pathlib.Path(sys.argv[2])
@@ -44,3 +44,29 @@ out2 = root / "artifact" / "gyotaku-artifact.html"
 out2.parent.mkdir(exist_ok=True)
 out2.write_text(art, encoding="utf-8")
 print(f"wrote {out2} ({out2.stat().st_size/1e6:.1f} MB)")
+
+# GitHub Pages 用：ホーム画面に追加でき、オフラインでも動く版（index.html ＋ 付属ファイル）
+pwa_head = """<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="魚拓写真">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+</head>"""
+pwa_sw = """<script>
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>"""
+web = tpl.replace("</head>", pwa_head, 1)
+web = web[: web.rindex("</body>")] + pwa_sw + web[web.rindex("</body>") + len("</body>"):]
+(root / "index.html").write_text(web, encoding="utf-8")
+pwa = root / "src" / "pwa"
+for f in ["manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"]:
+    shutil.copy(pwa / f, root / f)
+version = hashlib.sha256(web.encode("utf-8")).hexdigest()[:10]
+(root / "sw.js").write_text((pwa / "sw.js").read_text(encoding="utf-8").replace("__VERSION__", version), encoding="utf-8")
+(root / ".nojekyll").write_text("")
+print(f"wrote index.html + sw.js (version {version})")

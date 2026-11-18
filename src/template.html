@@ -1026,7 +1026,8 @@
     const blob = await canvasBlob();
     if (!blob) { notify("画像を作れませんでした。"); return; }
     const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (!inFrame) {
+    // iPhone は「写真に保存」できる長押し保存のほうが確実（ホーム画面から開いた時も安全）
+    if (!inFrame && !isIOS) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = fileName();
@@ -1034,7 +1035,8 @@
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      if (!isIOS) { notify("画像を保存しました（ダウンロードフォルダ）"); return; }
+      notify("画像を保存しました（ダウンロードフォルダ）");
+      return;
     }
     // iPhone や、ダウンロードできない画面では「長押しで保存」の画面を出す
     showOverlay();
