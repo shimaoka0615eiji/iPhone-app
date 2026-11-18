@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b2622">
+<meta name="format-detection" content="telephone=no">
+<title>魚拓風写真アプリ</title>
+<style>
+  :root {
+    --bg: #f4efe4;
+    --card: #fffdf8;
+    --ink: #2b2622;
+    --sub: #6b6157;
+    --line: #d9cfbf;
+    --accent: #b3322b;
+    --accent-dark: #8e231d;
+    --keep: #2e7d4f;
+    --erase: #b3322b;
+    --btn: #3a332d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+    font-size: 18px; line-height: 1.6;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  header {
+    background: var(--ink); color: #fff; text-align: center;
+    padding: 14px 16px 12px;
+  }
+  header h1 { margin: 0; font-size: 24px; letter-spacing: .1em; font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif; }
+  header p { margin: 2px 0 0; font-size: 14px; opacity: .8; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+  .steps { display: flex; gap: 6px; margin-bottom: 14px; }
+  .steps div {
+    flex: 1; text-align: center; font-size: 13px; padding: 6px 2px; border-radius: 8px;
+    background: #e6dece; color: var(--sub); font-weight: 600;
+  }
+  .steps div.on { background: var(--accent); color: #fff; }
+  .steps div.done { background: #cfc4b1; color: var(--ink); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 8px; font-size: 21px; }
+  .help { color: var(--sub); font-size: 16px; margin: 0 0 14px; }
+  .help b { color: var(--ink); }
+
+  button, .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 60px; padding: 12px 16px; margin: 0 0 12px;
+    font-size: 20px; font-weight: 700; font-family: inherit;
+    border: none; border-radius: 14px; color: #fff; background: var(--btn);
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+  }
+  button:active, .btn:active { transform: scale(.98); filter: brightness(1.1); }
+  button:disabled { opacity: .45; }
+  .btn-primary { background: var(--accent); }
+  .btn-light { background: #e6dece; color: var(--ink); }
+  .btn-row { display: flex; gap: 10px; }
+  .btn-row > * { flex: 1; }
+  .icon { font-size: 26px; line-height: 1; }
+
+  input[type=file] { display: none; }
+
+  .mode-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .mode-row button { margin: 0; min-height: 64px; background: #e6dece; color: var(--ink); border: 3px solid transparent; }
+  .mode-row button.keep.on { background: var(--keep); color: #fff; border-color: #1d5634; }
+  .mode-row button.erase.on { background: var(--erase); color: #fff; border-color: #7d1c17; }
+
+  .canvas-wrap {
+    position: relative; width: 100%; background: #333; border-radius: 12px; overflow: hidden;
+    touch-action: none; margin-bottom: 12px;
+  }
+  #editCanvas { display: block; width: 100%; touch-action: none; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 15px; color: var(--sub); margin: -4px 0 12px; }
+  .legend span::before { content: ""; display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+  .legend .l-keep::before { background: #e9d9c0; border: 1px solid #999; }
+  .legend .l-erase::before { background: #23324a; }
+
+  label.field { display: block; font-weight: 700; margin: 0 0 4px; font-size: 18px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .slider-row span { font-size: 15px; color: var(--sub); white-space: nowrap; }
+  input[type=range] { flex: 1; height: 44px; accent-color: var(--accent); }
+  input[type=text], input[type=date] {
+    width: 100%; font-size: 20px; padding: 12px 14px; min-height: 56px; margin-bottom: 14px;
+    border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); font-family: inherit;
+    -webkit-appearance: none; appearance: none;
+  }
+  input[type=text]:focus, input[type=date]:focus { outline: none; border-color: var(--accent); }
+
+  #resultCanvas { display: block; width: 100%; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,.18); background: #fff; margin-bottom: 14px; }
+
+  .progress { text-align: center; padding: 26px 8px; }
+  .spinner { width: 54px; height: 54px; margin: 0 auto 14px; border-radius: 50%; border: 6px solid #e6dece; border-top-color: var(--accent); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .notice { background: #fff3d6; border: 1px solid #e8c66a; border-radius: 12px; padding: 10px 12px; font-size: 16px; margin-bottom: 12px; }
+  .notice.err { background: #fde4e1; border-color: #e09a92; }
+  .hidden { display: none !important; }
+  .small { font-size: 14px; color: var(--sub); }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+
+  #saveOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.95); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+  #saveOverlay img { max-width: 100%; max-height: 70vh; background: #fff; }
+  #saveOverlay p { color: #fff; text-align: center; }
+  #saveOverlay button { max-width: 400px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>魚 拓 写 真</h1>
+  <p>釣った魚の写真を、魚拓のような作品にします</p>
+</header>
+
+<main>
+  <div class="steps" id="steps">
+    <div data-step="1">① 写真</div>
+    <div data-step="2">② 切り抜き</div>
+    <div data-step="3">③ 手直し</div>
+    <div data-step="4">④ 完成</div>
+  </div>
+
+  <!-- ① 写真選択 -->
+  <section id="step1" class="card">
+    <h2>① 魚の写真をえらぶ</h2>
+    <p class="help">魚が<b>大きく</b>、<b>横向き</b>に写っている写真がおすすめです。<br>写真はこのスマホの中だけで処理され、<b>インターネットには送信されません</b>。</p>
+    <button class="btn-primary" id="btnCamera"><span class="icon">📷</span>カメラで撮る</button>
+    <button id="btnAlbum"><span class="icon">🖼️</span>アルバムから選ぶ</button>
+    <input type="file" id="fileCamera" accept="image/*" capture="environment">
+    <input type="file" id="fileAlbum" accept="image/*">
+    <p class="small" id="modelStatus">切り抜き機能を準備しています…</p>
+  </section>
+
+  <!-- ② 自動切り抜き中 -->
+  <section id="step2" class="card hidden">
+    <div class="progress">
+      <div class="spinner"></div>
+      <h2 id="progressTitle">魚を切り抜いています…</h2>
+      <p class="help" id="progressText">そのまま少しお待ちください。<br>（はじめての時は数十秒かかることがあります）</p>
+    </div>
+  </section>
+
+  <!-- ③ 手直し -->
+  <section id="step3" class="card hidden">
+    <h2>③ 切り抜きを手直しする</h2>
+    <div id="autoNotice" class="notice hidden"></div>
+    <p class="help"><b>明るく見える部分</b>が魚拓になります。暗い部分は消えます。<br>
+      下のボタンで「残す」「消す」を選んで、<b>指でなぞって</b>直してください。<br>
+      <span class="small">2本の指で広げると拡大、動かすと移動できます。</span></p>
+    <div class="mode-row">
+      <button class="keep" id="modeKeep">✋ 残す</button>
+      <button class="erase on" id="modeErase">🧽 消す</button>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap"><canvas id="editCanvas"></canvas></div>
+    <div class="legend"><span class="l-keep">明るい＝残る部分</span><span class="l-erase">暗い＝消える部分</span></div>
+    <label class="field" for="brushSize">ブラシの太さ</label>
+    <div class="slider-row"><span>細い</span><input type="range" id="brushSize" min="6" max="90" value="30"><span>太い</span></div>
+    <div class="btn-row">
+      <button class="btn-light" id="btnUndo">↩︎ 元に戻す</button>
+      <button class="btn-light" id="btnZoomReset">🔍 全体表示</button>
+    </div>
+    <details>
+      <summary>その他の操作</summary>
+      <div class="btn-row">
+        <button class="btn-light" id="btnResetAuto">自動の結果に戻す</button>
+        <button class="btn-light" id="btnKeepAll">全部を残す</button>
+      </div>
+    </details>
+    <button class="btn-primary" id="btnToGyotaku">次へ（魚拓にする） ▶</button>
+    <button class="btn-light" id="btnBack1">◀ 写真をえらび直す</button>
+  </section>
+
+  <!-- ④ 魚拓 -->
+  <section id="step4" class="card hidden">
+    <h2>④ 魚拓のできあがり</h2>
+    <p class="help">墨の濃さや文字を調整して、<b>「画像を保存」</b>を押してください。</p>
+    <canvas id="resultCanvas"></canvas>
+
+    <label class="field" for="inkStrength">墨の濃さ</label>
+    <div class="slider-row"><span>うすい</span><input type="range" id="inkStrength" min="0" max="100" value="60"><span>こい</span></div>
+
+    <label class="field" for="inDate">日付</label>
+    <input type="date" id="inDate">
+    <label class="field" for="inPlace">場所</label>
+    <input type="text" id="inPlace" placeholder="例：〇〇港 堤防" maxlength="30">
+    <label class="field" for="inName">名前</label>
+    <input type="text" id="inName" placeholder="例：山田 太郎" maxlength="20">
+
+    <button class="btn-primary" id="btnSave"><span class="icon">💾</span>画像を保存（PNG）</button>
+    <button id="btnShare" class="hidden"><span class="icon">📤</span>共有・写真アプリに保存</button>
+    <button class="btn-light" id="btnBack3">◀ 手直しに戻る</button>
+    <button class="btn-light" id="btnRestart">🔄 別の写真で作る</button>
+  </section>
+
+  <details class="small">
+    <summary>このアプリについて</summary>
+    <p>写真の切り抜きは、ブラウザの中で動くAI（U²-Netp モデル／ONNX Runtime Web）で行います。通信は一切行わないため、機内モードでも使えます。</p>
+    <p>使用ライブラリ：ONNX Runtime Web 1.20.1（MIT License, © Microsoft）、U²-Net（Apache License 2.0, © Xuebin Qin）</p>
+  </details>
+</main>
+
+<div id="saveOverlay" class="hidden">
+  <p>下の画像を<b>長押し</b>して「写真に保存」または「画像を保存」を選んでください。</p>
+  <img id="saveImg" alt="完成した魚拓">
+  <p></p>
+  <button class="btn-light" id="btnCloseOverlay">閉じる</button>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+ *  魚拓風写真アプリ  本体
+ * ========================================================= */
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const MAX_WORK = 1600;     // 作業用画像の最大辺(px)
+  const MODEL_SIZE = 320;    // U2-Netp の入力サイズ
+  const OUT_W = 1400;        // 完成画像の横幅(px)
+
+  /* ---------------- 画面切り替え ---------------- */
+  let currentStep = 1;
+  function showStep(n) {
+    currentStep = n;
+    for (let i = 1; i <= 4; i++) $("step" + i).classList.toggle("hidden", i !== n);
+    document.querySelectorAll("#steps div").forEach((d) => {
+      const s = +d.dataset.step;
+      d.classList.toggle("on", s === n);
+      d.classList.toggle("done", s < n);
+    });
+    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+    if (n === 3) requestAnimationFrame(() => { layoutEditCanvas(); resetView(); });
+  }
+
+  /* ---------------- AI モデルの準備 ---------------- */
+  let sessionPromise = null;
+  // 埋め込みデータはページの最後にあるため、読み込み完了を待つ
+  const domReady = new Promise((r) => {
+    if (document.readyState !== "loading") r();
+    else document.addEventListener("DOMContentLoaded", () => r());
+  });
+  function b64ToBytes(id) {
+    const s = $(id).textContent.trim();
+    const bin = atob(s);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  async function gunzip(bytes) {
+    const ds = new DecompressionStream("gzip");
+    const stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return await new Response(stream).arrayBuffer();
+  }
+  function loadSession() {
+    if (sessionPromise) return sessionPromise;
+    sessionPromise = (async () => {
+      await domReady;
+      if (typeof ort === "undefined") throw new Error("ONNX Runtime が読み込めませんでした");
+      if (typeof DecompressionStream === "undefined") throw new Error("このブラウザは古いため自動切り抜きに対応していません（iOS 16.4以降 / 新しいChromeをお使いください）");
+      const glue = new TextDecoder().decode(b64ToBytes("ort-glue"));
+      const glueUrl = URL.createObjectURL(new Blob([glue], { type: "text/javascript" }));
+      const wasmBin = await gunzip(b64ToBytes("ort-wasm"));
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.proxy = false;
+      ort.env.wasm.wasmPaths = { mjs: glueUrl, wasm: "about:blank" };
+      ort.env.wasm.wasmBinary = wasmBin;
+      const modelBuf = await gunzip(b64ToBytes("u2netp-model"));
+      const session = await ort.InferenceSession.create(modelBuf, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+      return session;
+    })();
+    sessionPromise.then(
+      () => { $("modelStatus").textContent = "✅ 切り抜き機能の準備ができました（オフラインで動きます）"; },
+      (e) => { console.error(e); $("modelStatus").textContent = "⚠️ 自動切り抜きが使えません。手作業で切り抜けます。"; }
+    );
+    return sessionPromise;
+  }
+
+  /* ---------------- 写真の読み込み ---------------- */
+  let workCanvas = null;   // 元写真（縮小済み）
+  let maskCanvas = null;   // 切り抜きマスク（白＋アルファ）
+  let autoMaskData = null; // 自動切り抜き結果（アルファのみ）
+  let W = 0, H = 0;
+
+  $("btnCamera").onclick = () => $("fileCamera").click();
+  $("btnAlbum").onclick = () => $("fileAlbum").click();
+  $("fileCamera").onchange = onFile;
+  $("fileAlbum").onchange = onFile;
+
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("画像を開けませんでした"));
+      img.src = url;
+    });
+  }
+
+  async function onFile(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    showStep(2);
+    $("progressTitle").textContent = "写真を読み込んでいます…";
+    let img;
+    try {
+      img = await loadImage(file);
+    } catch (err) {
+      alert("写真を開けませんでした。別の写真をお試しください。\n（HEIC形式の場合は、カメラの設定を「互換性優先」にすると開けます）");
+      showStep(1);
+      return;
+    }
+    const sc = Math.min(1, MAX_WORK / Math.max(img.naturalWidth, img.naturalHeight));
+    W = Math.max(1, Math.round(img.naturalWidth * sc));
+    H = Math.max(1, Math.round(img.naturalHeight * sc));
+    workCanvas = document.createElement("canvas");
+    workCanvas.width = W; workCanvas.height = H;
+    const wctx = workCanvas.getContext("2d");
+    wctx.imageSmoothingQuality = "high";
+    wctx.drawImage(img, 0, 0, W, H);
+    URL.revokeObjectURL(img.src);
+
+    maskCanvas = document.createElement("canvas");
+    maskCanvas.width = W; maskCanvas.height = H;
+
+    $("progressTitle").textContent = "魚を切り抜いています…";
+    await new Promise((r) => setTimeout(r, 30));
+    let alpha = null, errMsg = "";
+    try {
+      alpha = await runSegmentation();
+    } catch (err) {
+      console.error(err);
+      errMsg = (err && err.message) || String(err);
+    }
+    const notice = $("autoNotice");
+    if (alpha) {
+      autoMaskData = alpha;
+      notice.className = "notice";
+      notice.innerHTML = "自動で切り抜きました。<b>手や背景が残っていたら「消す」</b>、<b>欠けた部分は「残す」</b>でなぞって直してください。";
+    } else {
+      autoMaskData = new Uint8Array(W * H).fill(255);
+      notice.className = "notice err";
+      notice.innerHTML = "自動切り抜きができませんでした。<b>「消す」ブラシで魚以外をなぞって</b>消してください。<br><span class='small'>" + escapeHtml(errMsg) + "</span>";
+    }
+    setMaskAlpha(autoMaskData);
+    undoStack.length = 0;
+    updateUndoBtn();
+    setMode("erase");
+    showStep(3);
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+  /* ---------------- 自動切り抜き（U2-Netp） ---------------- */
+  async function runSegmentation() {
+    const session = await loadSession();
+    const S = MODEL_SIZE;
+    const c = document.createElement("canvas");
+    c.width = S; c.height = S;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(workCanvas, 0, 0, S, S);
+    const px = ctx.getImageData(0, 0, S, S).data;
+    let mx = 1;
+    for (let i = 0; i < px.length; i += 4) { if (px[i] > mx) mx = px[i]; if (px[i + 1] > mx) mx = px[i + 1]; if (px[i + 2] > mx) mx = px[i + 2]; }
+    const mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225];
+    const input = new Float32Array(3 * S * S);
+    for (let i = 0, p = 0; i < S * S; i++, p += 4) {
+      input[i] = (px[p] / mx - mean[0]) / std[0];
+      input[S * S + i] = (px[p + 1] / mx - mean[1]) / std[1];
+      input[2 * S * S + i] = (px[p + 2] / mx - mean[2]) / std[2];
+    }
+    const feeds = {};
+    feeds[session.inputNames[0]] = new ort.Tensor("float32", input, [1, 3, S, S]);
+    const results = await session.run(feeds);
+    const pred = results[session.outputNames[0]].data;
+
+    // 正規化
+    let mi = Infinity, ma = -Infinity;
+    for (let i = 0; i < pred.length; i++) { const v = pred[i]; if (v < mi) mi = v; if (v > ma) ma = v; }
+    const rng = ma - mi || 1;
+    const small = new Float32Array(S * S);
+    for (let i = 0; i < S * S; i++) small[i] = (pred[i] - mi) / rng;
+
+    // 小さなゴミを取り除く（一番大きな塊と、それに近い大きさの塊だけ残す）
+    const keep = largestComponents(small, S, S, 0.5, 0.12);
+    const sc = document.createElement("canvas");
+    sc.width = S; sc.height = S;
+    const sctx = sc.getContext("2d");
+    const sd = sctx.createImageData(S, S);
+    for (let i = 0; i < S * S; i++) {
+      const v = keep[i] ? small[i] : Math.min(small[i], 0.2);
+      sd.data[i * 4] = sd.data[i * 4 + 1] = sd.data[i * 4 + 2] = 255;
+      sd.data[i * 4 + 3] = Math.round(v * 255);
+    }
+    sctx.putImageData(sd, 0, 0);
+    // 元の大きさに拡大し、輪郭をくっきりさせる
+    const big = document.createElement("canvas");
+    big.width = W; big.height = H;
+    const bctx = big.getContext("2d", { willReadFrequently: true });
+    bctx.imageSmoothingEnabled = true;
+    bctx.imageSmoothingQuality = "high";
+    bctx.drawImage(sc, 0, 0, W, H);
+    const bd = bctx.getImageData(0, 0, W, H).data;
+    const alpha = new Uint8Array(W * H);
+    let count = 0;
+    for (let i = 0; i < W * H; i++) {
+      const a = bd[i * 4 + 3] / 255;
+      const v = smoothstep(0.38, 0.62, a);
+      alpha[i] = Math.round(v * 255);
+      if (alpha[i] > 128) count++;
+    }
+    if (count < W * H * 0.005) throw new Error("魚を見つけられませんでした");
+    return alpha;
+  }
+
+  function largestComponents(arr, w, h, th, ratio) {
+    const label = new Int32Array(w * h);
+    const sizes = [0];
+    const stack = new Int32Array(w * h);
+    let cur = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (label[i] || arr[i] < th) continue;
+      cur++;
+      let sp = 0, size = 0;
+      stack[sp++] = i; label[i] = cur;
+      while (sp) {
+        const p = stack[--sp]; size++;
+        const x = p % w, y = (p / w) | 0;
+        if (x > 0 && !label[p - 1] && arr[p - 1] >= th) { label[p - 1] = cur; stack[sp++] = p - 1; }
+        if (x < w - 1 && !label[p + 1] && arr[p + 1] >= th) { label[p + 1] = cur; stack[sp++] = p + 1; }
+        if (y > 0 && !label[p - w] && arr[p - w] >= th) { label[p - w] = cur; stack[sp++] = p - w; }
+        if (y < h - 1 && !label[p + w] && arr[p + w] >= th) { label[p + w] = cur; stack[sp++] = p + w; }
+      }
+      sizes.push(size);
+    }
+    let maxS = 0;
+    for (let i = 1; i < sizes.length; i++) if (sizes[i] > maxS) maxS = sizes[i];
+    const ok = sizes.map((s) => s >= maxS * ratio);
+    const out = new Uint8Array(w * h);
+    // しきい値未満の画素は、近くの残す塊に含まれているとみなす（輪郭のぼかし部分）
+    for (let i = 0; i < w * h; i++) out[i] = label[i] ? (ok[label[i]] ? 1 : 0) : 1;
+    // 低い値の画素で、残さない塊の隣にあるものはそのままでも害は小さいので許容
+    return out;
+  }
+
+  function smoothstep(a, b, x) { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+
+  /* ---------------- マスク操作 ---------------- */
+  function setMaskAlpha(alpha) {
+    const ctx = maskCanvas.getContext("2d");
+    const d = ctx.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) {
+      const p = i * 4;
+      d.data[p] = d.data[p + 1] = d.data[p + 2] = 255;
+      d.data[p + 3] = alpha[i];
+    }
+    ctx.putImageData(d, 0, 0);
+    overlayDirty = true;
+    requestDraw();
+  }
+  function getMaskAlpha() {
+    const d = maskCanvas.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+    const a = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) a[i] = d[i * 4 + 3];
+    return a;
+  }
+
+  /* ---------------- 手直し画面 ---------------- */
+  const editCanvas = $("editCanvas");
+  const ectx = editCanvas.getContext("2d");
+  let overlayCanvas = null, overlayDirty = true;
+  let mode = "erase";
+  let view = { s: 1, x: 0, y: 0 }; // 画像→キャンバス の変換
+  let dpr = 1;
+  const undoStack = [];
+  const UNDO_MAX = 15;
+
+  function setMode(m) {
+    mode = m;
+    $("modeKeep").classList.toggle("on", m === "keep");
+    $("modeErase").classList.toggle("on", m === "erase");
+  }
+  $("modeKeep").onclick = () => setMode("keep");
+  $("modeErase").onclick = () => setMode("erase");
+
+  function layoutEditCanvas() {
+    if (!workCanvas) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cssW = $("canvasWrap").clientWidth;
+    const maxCssH = Math.max(260, window.innerHeight * 0.6);
+    const cssH = Math.min(maxCssH, cssW * (H / W));
+    editCanvas.style.height = cssH + "px";
+    editCanvas.width = Math.round(cssW * dpr);
+    editCanvas.height = Math.round(cssH * dpr);
+  }
+  function fitScale() { return Math.min(editCanvas.width / W, editCanvas.height / H); }
+  function resetView() {
+    const s = fitScale();
+    view = { s, x: (editCanvas.width - W * s) / 2, y: (editCanvas.height - H * s) / 2 };
+    requestDraw();
+  }
+  $("btnZoomReset").onclick = resetView;
+  window.addEventListener("resize", () => { if (currentStep === 3) { layoutEditCanvas(); resetView(); } });
+
+  let drawQueued = false;
+  function requestDraw() {
+    if (drawQueued) return;
+    drawQueued = true;
+    requestAnimationFrame(() => { drawQueued = false; drawEdit(); });
+  }
+  function drawEdit() {
+    if (!workCanvas) return;
+    if (!overlayCanvas || overlayCanvas.width !== W || overlayCanvas.height !== H) {
+      overlayCanvas = document.createElement("canvas");
+      overlayCanvas.width = W; overlayCanvas.height = H;
+      overlayDirty = true;
+    }
+    if (overlayDirty) {
+      const o = overlayCanvas.getContext("2d");
+      o.globalCompositeOperation = "copy";
+      o.fillStyle = "rgba(20,32,58,0.78)";
+      o.fillRect(0, 0, W, H);
+      o.globalCompositeOperation = "destination-out";
+      o.drawImage(maskCanvas, 0, 0);
+      o.globalCompositeOperation = "source-over";
+      overlayDirty = false;
+    }
+    ectx.setTransform(1, 0, 0, 1, 0, 0);
+    ectx.fillStyle = "#333";
+    ectx.fillRect(0, 0, editCanvas.width, editCanvas.height);
+    ectx.setTransform(view.s, 0, 0, view.s, view.x, view.y);
+    ectx.imageSmoothingEnabled = true;
+    ectx.drawImage(workCanvas, 0, 0);
+    ectx.drawImage(overlayCanvas, 0, 0);
+    ectx.setTransform(1, 0, 0, 1, 0, 0);
+    if (cursor) {
+      ectx.beginPath();
+      ectx.arc(cursor.x, cursor.y, brushRadiusScreen(), 0, Math.PI * 2);
+      ectx.lineWidth = 2 * dpr;
+      ectx.strokeStyle = mode === "keep" ? "#5fe39a" : "#ff6a5f";
+      ectx.stroke();
+      ectx.lineWidth = 1 * dpr;
+      ectx.strokeStyle = "rgba(0,0,0,.6)";
+      ectx.stroke();
+    }
+  }
+  function brushRadiusScreen() { return (+$("brushSize").value / 2) * dpr; }
+
+  // ---- ポインタ操作（1本指＝なぞる、2本指＝拡大・移動）----
+  const pointers = new Map();
+  let stroke = null;   // {last:{x,y}, snapshot}
+  let pinch = null;
+  let cursor = null;
+
+  function toCanvasPt(e) {
+    const r = editCanvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * (editCanvas.width / r.width), y: (e.clientY - r.top) * (editCanvas.height / r.height) };
+  }
+  function toImagePt(p) { return { x: (p.x - view.x) / view.s, y: (p.y - view.y) / view.s }; }
+
+  editCanvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    try { editCanvas.setPointerCapture(e.pointerId); } catch (_) {}
+    pointers.set(e.pointerId, toCanvasPt(e));
+    if (pointers.size === 1) {
+      beginStroke(toCanvasPt(e));
+    } else if (pointers.size === 2) {
+      // 2本目の指：なぞりを取り消してピンチ操作へ
+      cancelStroke();
+      const [a, b] = [...pointers.values()];
+      pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, view: { ...view } };
+      cursor = null; requestDraw();
+    }
+  });
+  editCanvas.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    e.preventDefault();
+    const p = toCanvasPt(e);
+    pointers.set(e.pointerId, p);
+    if (pinch && pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const minS = fitScale() * 0.8, maxS = fitScale() * 10;
+      const s = Math.min(maxS, Math.max(minS, pinch.view.s * dist / pinch.dist));
+      // ピンチ開始時の中心点にあった画像上の点を、現在の中心に合わせる
+      const ix = (pinch.mid.x - pinch.view.x) / pinch.view.s;
+      const iy = (pinch.mid.y - pinch.view.y) / pinch.view.s;
+      view = { s, x: mid.x - ix * s, y: mid.y - iy * s };
+      requestDraw();
+    } else if (stroke) {
+      continueStroke(p);
+    }
+  });
+  function endPointer(e) {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.delete(e.pointerId);
+    if (stroke && pointers.size === 0) finishStroke();
+    if (pointers.size < 2) pinch = null;
+    if (pointers.size === 0) { cursor = null; requestDraw(); }
+  }
+  editCanvas.addEventListener("pointerup", endPointer);
+  editCanvas.addEventListener("pointercancel", endPointer);
+  editCanvas.addEventListener("lostpointercapture", endPointer);
+
+  function beginStroke(p) {
+    stroke = { last: p, snapshot: getMaskAlpha(), moved: false, start: performance.now() };
+    cursor = p;
+    paintSegment(p, p);
+  }
+  function continueStroke(p) {
+    paintSegment(stroke.last, p);
+    stroke.last = p; stroke.moved = true;
+    cursor = p;
+  }
+  function cancelStroke() {
+    if (!stroke) return;
+    setMaskAlpha(stroke.snapshot);
+    stroke = null;
+  }
+  function finishStroke() {
+    undoStack.push(stroke.snapshot);
+    if (undoStack.length > UNDO_MAX) undoStack.shift();
+    stroke = null;
+    updateUndoBtn();
+  }
+  function paintSegment(a, b) {
+    const ia = toImagePt(a), ib = toImagePt(b);
+    const r = brushRadiusScreen() / view.s;
+    const ctx = maskCanvas.getContext("2d");
+    ctx.save();
+    ctx.globalCompositeOperation = mode === "keep" ? "source-over" : "destination-out";
+    ctx.strokeStyle = "#fff";
+    ctx.fillStyle = "#fff";
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = r * 2;
+    ctx.beginPath();
+    ctx.moveTo(ia.x, ia.y);
+    ctx.lineTo(ib.x + 0.01, ib.y);
+    ctx.stroke();
+    ctx.restore();
+    overlayDirty = true;
+    requestDraw();
+  }
+
+  function updateUndoBtn() { $("btnUndo").disabled = undoStack.length === 0; }
+  $("btnUndo").onclick = () => {
+    if (!undoStack.length) return;
+    setMaskAlpha(undoStack.pop());
+    updateUndoBtn();
+  };
+  $("btnResetAuto").onclick = () => {
+    if (!autoMaskData) return;
+    undoStack.push(getMaskAlpha()); if (undoStack.length > UNDO_MAX) undoStack.shift();
+    setMaskAlpha(autoMaskData); updateUndoBtn();
+  };
+  $("btnKeepAll").onclick = () => {
+    undoStack.push(getMaskAlpha()); if (undoStack.length > UNDO_MAX) undoStack.shift();
+    setMaskAlpha(new Uint8Array(W * H).fill(255)); updateUndoBtn();
+  };
+  $("btnBack1").onclick = () => showStep(1);
+  $("brushSize").addEventListener("input", () => {
+    cursor = { x: editCanvas.width / 2, y: editCanvas.height / 2 };
+    requestDraw();
+    clearTimeout(brushSize._t);
+    brushSize._t = setTimeout(() => { if (!stroke) { cursor = null; requestDraw(); } }, 700);
+  });
+  const brushSize = $("brushSize");
+
+  /* ---------------- 魚拓加工 ---------------- */
+  let G = null; // 魚拓用の下準備データ
+
+  // 再現性のある乱数
+  function rng(seed) {
+    let s = seed >>> 0;
+    return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  // なめらかなノイズ（小さな乱数画像を拡大して作る）
+  function noiseField(w, h, gx, gy, seed) {
+    const r = rng(seed);
+    const sc = document.createElement("canvas");
+    sc.width = gx; sc.height = gy;
+    const sctx = sc.getContext("2d");
+    const d = sctx.createImageData(gx, gy);
+    for (let i = 0; i < gx * gy; i++) { const v = Math.floor(r() * 256); d.data[i * 4] = d.data[i * 4 + 1] = d.data[i * 4 + 2] = v; d.data[i * 4 + 3] = 255; }
+    sctx.putImageData(d, 0, 0);
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(sc, 0, 0, w, h);
+    const px = ctx.getImageData(0, 0, w, h).data;
+    const out = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) out[i] = px[i * 4] / 255;
+    return out;
+  }
+  function boxBlur(src, w, h, r) {
+    r = Math.max(1, Math.round(r));
+    const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+    const inv = 1 / (2 * r + 1);
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      let acc = 0;
+      for (let k = -r; k <= r; k++) acc += src[row + Math.min(w - 1, Math.max(0, k))];
+      for (let x = 0; x < w; x++) {
+        tmp[row + x] = acc * inv;
+        acc += src[row + Math.min(w - 1, x + r + 1)] - src[row + Math.max(0, x - r)];
+      }
+    }
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let k = -r; k <= r; k++) acc += tmp[Math.min(h - 1, Math.max(0, k)) * w + x];
+      for (let y = 0; y < h; y++) {
+        out[y * w + x] = acc * inv;
+        acc += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x];
+      }
+    }
+    return out;
+  }
+  function blur3(src, w, h, r) { return boxBlur(boxBlur(boxBlur(src, w, h, r), w, h, r), w, h, r); }
+
+  function prepareGyotaku() {
+    const alpha = getMaskAlpha();
+    // 魚の範囲を求める
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (alpha[y * W + x] > 100) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return false;
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+
+    // 完成画像のレイアウト
+    const margin = Math.round(OUT_W * 0.08);
+    const maxFW = OUT_W - margin * 2;
+    const maxFH = Math.round(OUT_W * 0.95);
+    const s = Math.min(maxFW / bw, maxFH / bh);
+    const fw = Math.max(1, Math.round(bw * s)), fh = Math.max(1, Math.round(bh * s));
+    const textH = Math.round(OUT_W * 0.27);
+    const outH = margin + Math.max(fh, Math.round(OUT_W * 0.35)) + Math.round(margin * 0.6) + textH;
+    const fx = Math.round((OUT_W - fw) / 2);
+    const fy = margin + Math.round((Math.max(fh, Math.round(OUT_W * 0.35)) - fh) / 2);
+
+    // 切り抜いた魚を拡大縮小して取り出す
+    const pad = 4;
+    const cw = fw + pad * 2, ch = fh + pad * 2;
+    const ic = document.createElement("canvas"); ic.width = cw; ic.height = ch;
+    const ictx = ic.getContext("2d", { willReadFrequently: true });
+    ictx.imageSmoothingQuality = "high";
+    ictx.drawImage(workCanvas, x0, y0, bw, bh, pad, pad, fw, fh);
+    const ipx = ictx.getImageData(0, 0, cw, ch).data;
+    const mc = document.createElement("canvas"); mc.width = cw; mc.height = ch;
+    const mctx = mc.getContext("2d", { willReadFrequently: true });
+    mctx.imageSmoothingQuality = "high";
+    mctx.drawImage(maskCanvas, x0, y0, bw, bh, pad, pad, fw, fh);
+    const mpx = mctx.getImageData(0, 0, cw, ch).data;
+
+    const n = cw * ch;
+    const lum = new Float32Array(n), m = new Float32Array(n);
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < n; i++) {
+      const p = i * 4;
+      const l = 0.299 * ipx[p] + 0.587 * ipx[p + 1] + 0.114 * ipx[p + 2];
+      lum[i] = l / 255;
+      m[i] = mpx[p + 3] / 255;
+      if (m[i] > 0.5) hist[Math.min(255, Math.round(l))]++;
+    }
+    // 明るさを魚の範囲で引き伸ばす（2%〜98%）
+    let tot = 0; for (let i = 0; i < 256; i++) tot += hist[i];
+    let lo = 0, hi = 255, acc = 0;
+    for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= tot * 0.02) { lo = i; break; } }
+    acc = 0;
+    for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= tot * 0.02) { hi = i; break; } }
+    const span = Math.max(20, hi - lo) / 255, base = lo / 255;
+    for (let i = 0; i < n; i++) lum[i] = Math.min(1, Math.max(0, (lum[i] - base) / span));
+
+    const scale = Math.max(cw, ch);
+    const lumBlur = blur3(lum, cw, ch, scale / 90);
+    const detail = new Float32Array(n);
+    for (let i = 0; i < n; i++) detail[i] = lum[i] - lumBlur[i];
+    const mSoft = blur3(m, cw, ch, 1);
+    const mWide = blur3(m, cw, ch, scale / 120);
+
+    // 墨のムラ・かすれ用ノイズ
+    const seed = 12345;
+    const mura = noiseField(cw, ch, 6, 5, seed);
+    const mura2 = noiseField(cw, ch, 18, 14, seed + 1);
+    const grain = noiseField(cw, ch, Math.max(8, cw >> 2), Math.max(8, ch >> 2), seed + 2);
+    const grain2 = noiseField(cw, ch, Math.max(8, cw >> 1), Math.max(8, ch >> 1), seed + 5);
+    const streak = noiseField(cw, ch, Math.max(6, cw >> 4), Math.max(8, ch >> 2), seed + 3); // 横方向のかすれ
+    const edgeN = noiseField(cw, ch, Math.max(8, cw >> 3), Math.max(8, ch >> 3), seed + 4);
+
+    // 和紙の背景
+    const paper = makePaper(OUT_W, outH);
+
+    G = { cw, ch, pad, fx, fy, fw, fh, outH, lum, detail, mSoft, mWide, mura, mura2, grain, grain2, streak, edgeN, paper, textTop: fy + Math.max(fh, 0) + Math.round(margin * 0.6), margin };
+    G.textTop = margin + Math.max(fh, Math.round(OUT_W * 0.35)) + Math.round(margin * 0.6);
+    return true;
+  }
+
+  function makePaper(w, h) {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    // 生成り色の下地
+    const grd = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.75);
+    grd.addColorStop(0, "#fbf8f1");
+    grd.addColorStop(1, "#efe8da");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+    // 和紙の繊維
+    const r = rng(777);
+    const fibers = Math.round(w * h / 900);
+    for (let i = 0; i < fibers; i++) {
+      const x = r() * w, y = r() * h;
+      const len = 8 + r() * 40, ang = r() * Math.PI * 2;
+      ctx.strokeStyle = r() < 0.5 ? "rgba(160,140,110," + (0.05 + r() * 0.1) + ")" : "rgba(255,255,255," + (0.3 + r() * 0.4) + ")";
+      ctx.lineWidth = 0.5 + r() * 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + Math.cos(ang + 0.6) * len * 0.5, y + Math.sin(ang + 0.6) * len * 0.5, x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+      ctx.stroke();
+    }
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    const cloud = noiseField(w, h, 14, Math.max(4, Math.round(14 * h / w)), 999);
+    const fine = noiseField(w, h, w >> 2, h >> 2, 998);
+    for (let i = 0; i < w * h; i++) {
+      const v = (cloud[i] - 0.5) * 14 + (fine[i] - 0.5) * 10;
+      const p = i * 4;
+      d[p] = clamp255(d[p] + v); d[p + 1] = clamp255(d[p + 1] + v); d[p + 2] = clamp255(d[p + 2] + v * 1.1);
+    }
+    return img;
+  }
+  function clamp255(v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
+
+  function renderGyotaku() {
+    if (!G) return;
+    const strength = +$("inkStrength").value / 100; // 0〜1
+    const out = new ImageData(new Uint8ClampedArray(G.paper.data), OUT_W, G.outH);
+    const d = out.data;
+    const { cw, ch, pad, fx, fy } = G;
+    const ox = fx - pad, oy = fy - pad;
+    const inkR = 24, inkG = 22, inkB = 26; // 墨色
+    const dryLo = 0.32 + 0.4 * strength;   // 濃いほどかすれが減る
+    const gain = 0.35 + 1.05 * strength;
+    for (let y = 0; y < ch; y++) {
+      const ty = oy + y;
+      if (ty < 0 || ty >= G.outH) continue;
+      for (let x = 0; x < cw; x++) {
+        const tx = ox + x;
+        if (tx < 0 || tx >= OUT_W) continue;
+        const i = y * cw + x;
+        // 輪郭を少しギザギザに（紙ににじんだ感じ）
+        const mEdge = G.mSoft[i] + (G.edgeN[i] - 0.5) * 0.5 * (1 - Math.abs(G.mSoft[i] * 2 - 1));
+        const mm = smoothstep(0.3, 0.7, mEdge);
+        if (mm <= 0.002) continue;
+        const l = G.lum[i];
+        // 魚拓は体全体に墨が乗る。色の濃淡は少しだけ、細かい凹凸（ウロコ・ヒレの筋）を強調
+        let ink = 0.82 + 0.18 * (1 - l);
+        ink += -G.detail[i] * 2.6;
+        // 輪郭付近は墨が溜まって濃くなる
+        const rim = Math.max(0, G.mSoft[i] - G.mWide[i]);
+        ink += rim * 1.2;
+        // ムラ（墨の付き方の濃淡）
+        ink *= 0.86 + (G.mura[i] - 0.5) * 0.45 + (G.mura2[i] - 0.5) * 0.3;
+        // かすれ：墨の乾いた場所だけ、紙の目に沿って白く抜ける
+        const dry = smoothstep(dryLo, dryLo + 0.3, G.mura2[i] * 0.6 + G.mura[i] * 0.4);
+        const kv = G.grain[i] * 0.45 + G.streak[i] * 0.35 + G.grain2[i] * 0.2;
+        const k = smoothstep(0.42, 0.6, kv);
+        ink *= 1 - dry * (1 - k) * 0.9;
+        // 墨の粒
+        ink *= 0.9 + (G.grain2[i] - 0.5) * 0.35;
+        ink = Math.min(1, Math.max(0, ink * gain));
+        const a = ink * mm;
+        const p = (ty * OUT_W + tx) * 4;
+        d[p] = d[p] * (1 - a) + inkR * a;
+        d[p + 1] = d[p + 1] * (1 - a) + inkG * a;
+        d[p + 2] = d[p + 2] * (1 - a) + inkB * a;
+      }
+    }
+    const rc = $("resultCanvas");
+    rc.width = OUT_W; rc.height = G.outH;
+    const ctx = rc.getContext("2d");
+    ctx.putImageData(out, 0, 0);
+    drawTexts(ctx);
+  }
+
+  const MINCHO = '"Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho", "YuMincho", "Noto Serif JP", "Noto Serif CJK JP", "Source Han Serif JP", serif';
+  function formatDate(v) {
+    if (!v) return "";
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if (!m) return v;
+    return `${+m[1]}年${+m[2]}月${+m[3]}日`;
+  }
+  function drawTexts(ctx) {
+    const date = formatDate($("inDate").value);
+    const place = $("inPlace").value.trim();
+    const name = $("inName").value.trim();
+    const top = G.textTop;
+    const areaH = G.outH - top;
+    const cx = OUT_W / 2;
+    // 区切り線
+    ctx.strokeStyle = "rgba(60,50,40,.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(OUT_W * 0.18, top); ctx.lineTo(OUT_W * 0.82, top);
+    ctx.stroke();
+
+    const lines = [];
+    if (date || place) lines.push({ text: [date, place].filter(Boolean).join("　"), size: OUT_W * 0.046, color: "#2a2420" });
+    if (name) lines.push({ text: name, size: OUT_W * 0.058, color: "#1a1612", bold: true });
+    if (!lines.length) return;
+    const gap = OUT_W * 0.03;
+    const totalH = lines.reduce((s, l) => s + l.size, 0) + gap * (lines.length - 1);
+    let y = top + (areaH - totalH) / 2;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    for (const ln of lines) {
+      let size = ln.size;
+      ctx.font = `${ln.bold ? "700" : "500"} ${size}px ${MINCHO}`;
+      // 長すぎる場合は縮める
+      const maxW = OUT_W * 0.84 - (ln === lines[lines.length - 1] && name ? OUT_W * 0.12 : 0);
+      let tw = ctx.measureText(ln.text).width;
+      if (tw > maxW) { size = size * maxW / tw; ctx.font = `${ln.bold ? "700" : "500"} ${size}px ${MINCHO}`; tw = ctx.measureText(ln.text).width; }
+      ctx.fillStyle = ln.color;
+      // 名前は右に印を押すので、名前＋印の全体が中央に来るよう少し左へ
+      const shift = (ln.bold && name) ? ln.size * 1.15 * 1.45 / 2 : 0;
+      ctx.fillText(ln.text, cx - shift, y + (ln.size - size) / 2);
+      ln.y = y; ln.w = tw; ln.drawSize = size; ln.cx = cx - shift;
+      y += ln.size + gap;
+    }
+    // 名前の横に朱色の印
+    if (name) {
+      const ln = lines[lines.length - 1];
+      const ch = [...name.replace(/\s/g, "")][0] || "";
+      const sz = ln.size * 1.15;
+      const sx = ln.cx + ln.w / 2 + sz * 0.45;
+      const sy = ln.y + (ln.size - sz) / 2;
+      drawSeal(ctx, sx, sy, sz, ch);
+    }
+  }
+  function drawSeal(ctx, x, y, s, ch) {
+    ctx.save();
+    ctx.translate(x + s / 2, y + s / 2);
+    ctx.rotate(-0.04);
+    ctx.fillStyle = "rgba(190,40,30,.88)";
+    const r = s * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(-s / 2 + r, -s / 2);
+    ctx.arcTo(s / 2, -s / 2, s / 2, s / 2, r);
+    ctx.arcTo(s / 2, s / 2, -s / 2, s / 2, r);
+    ctx.arcTo(-s / 2, s / 2, -s / 2, -s / 2, r);
+    ctx.arcTo(-s / 2, -s / 2, s / 2, -s / 2, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#fbf3e8";
+    ctx.font = `700 ${s * 0.66}px ${MINCHO}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(ch, 0, s * 0.04);
+    // 印のかすれ
+    const rr = rng(4242);
+    ctx.globalCompositeOperation = "destination-out";
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `rgba(0,0,0,${0.15 + rr() * 0.4})`;
+      ctx.beginPath();
+      ctx.arc((rr() - 0.5) * s, (rr() - 0.5) * s, s * (0.01 + rr() * 0.03), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  let renderQueued = false;
+  function requestRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    requestAnimationFrame(() => { renderQueued = false; renderGyotaku(); });
+  }
+  ["inkStrength", "inDate", "inPlace", "inName"].forEach((id) => {
+    $(id).addEventListener("input", requestRender);
+    $(id).addEventListener("change", requestRender);
+  });
+
+  $("btnToGyotaku").onclick = async () => {
+    const btn = $("btnToGyotaku");
+    btn.disabled = true; btn.textContent = "作成中…";
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      if (!prepareGyotaku()) { alert("魚の部分が残っていません。「残す」ブラシで魚をなぞってください。"); return; }
+      showStep(4);
+      renderGyotaku();
+    } finally {
+      btn.disabled = false; btn.textContent = "次へ（魚拓にする） ▶";
+    }
+  };
+  $("btnBack3").onclick = () => showStep(3);
+  $("btnRestart").onclick = () => { showStep(1); };
+
+  /* ---------------- 保存 ---------------- */
+  function fileName() {
+    const d = new Date();
+    const z = (n) => String(n).padStart(2, "0");
+    return `gyotaku_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}.png`;
+  }
+  function canvasBlob() { return new Promise((res) => $("resultCanvas").toBlob(res, "image/png")); }
+
+  $("btnSave").onclick = async () => {
+    const blob = await canvasBlob();
+    if (!blob) { alert("画像を作れませんでした。"); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = fileName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // 端末によってはダウンロードできないため、長押し保存用の画面も用意
+    const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (isIOS) showOverlay(url);
+    else setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+  function showOverlay(url) {
+    $("saveImg").src = url;
+    $("saveOverlay").classList.remove("hidden");
+  }
+  $("btnCloseOverlay").onclick = () => $("saveOverlay").classList.add("hidden");
+
+  if (navigator.canShare && typeof File !== "undefined") {
+    try {
+      const testFile = new File([new Blob(["x"], { type: "image/png" })], "t.png", { type: "image/png" });
+      if (navigator.canShare({ files: [testFile] })) $("btnShare").classList.remove("hidden");
+    } catch (_) {}
+  }
+  $("btnShare").onclick = async () => {
+    const blob = await canvasBlob();
+    const file = new File([blob], fileName(), { type: "image/png" });
+    try { await navigator.share({ files: [file], title: "魚拓" }); }
+    catch (e) { if (e && e.name !== "AbortError") alert("共有できませんでした。「画像を保存」をお使いください。"); }
+  };
+
+  /* ---------------- 初期化 ---------------- */
+  (function initDate() {
+    const d = new Date();
+    const z = (n) => String(n).padStart(2, "0");
+    $("inDate").value = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+  })();
+  showStep(1);
+  // 写真を選んでいる間に、AIモデルを裏で準備しておく
+  setTimeout(() => { loadSession().catch(() => {}); }, 300);
+
+  // テスト用に一部を公開
+  window.__gyotaku = { showStep, getMaskAlpha, get W() { return W; }, get H() { return H; } };
+})();
+</script>
+
+<!-- ===== 以下、オフライン動作のために埋め込んだライブラリとAIモデル ===== -->
+<script>/*__ORT_JS__*/</script>
+<script type="application/octet-stream" id="ort-glue">/*__ORT_GLUE_B64__*/</script>
+<script type="application/octet-stream" id="ort-wasm">/*__ORT_WASM_GZ_B64__*/</script>
+<script type="application/octet-stream" id="u2netp-model">/*__MODEL_GZ_B64__*/</script>
+</body>
+</html>
