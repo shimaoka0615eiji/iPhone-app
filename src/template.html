@@ -103,6 +103,7 @@
   details { margin-top: 8px; }
   summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
 
+  #toast { position: fixed; left: 16px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 20; background: #2b2622; color: #fff; padding: 14px 16px; border-radius: 12px; font-size: 17px; box-shadow: 0 4px 16px rgba(0,0,0,.3); max-width: 600px; margin: 0 auto; }
   #saveOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.95); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
   #saveOverlay img { max-width: 100%; max-height: 70vh; background: #fff; }
   #saveOverlay p { color: #fff; text-align: center; }
@@ -195,6 +196,13 @@
     <button class="btn-light" id="btnRestart">🔄 別の写真で作る</button>
   </section>
 
+  <details class="card">
+    <summary>📱 ホーム画面にアイコンを追加するには</summary>
+    <p class="help" style="margin-top:8px"><b>iPhone（Safari）</b><br>画面下の共有ボタン（□に↑のマーク）を押し、「ホーム画面に追加」を選びます。</p>
+    <p class="help"><b>Android（Chrome）</b><br>画面右上の「︙」を押し、「ホーム画面に追加」を選びます。</p>
+    <p class="small">次からはホーム画面のアイコンを押すだけで開けます。</p>
+  </details>
+
   <details class="small">
     <summary>このアプリについて</summary>
     <p>写真の切り抜きは、ブラウザの中で動くAI（U²-Netp モデル／ONNX Runtime Web）で行います。通信は一切行わないため、機内モードでも使えます。</p>
@@ -202,6 +210,7 @@
   </details>
 </main>
 
+<div id="toast" class="hidden" role="status"></div>
 <div id="saveOverlay" class="hidden">
   <p>下の画像を<b>長押し</b>して「写真に保存」または「画像を保存」を選んでください。</p>
   <img id="saveImg" alt="完成した魚拓">
@@ -216,6 +225,15 @@
  * ========================================================= */
 (function () {
   const $ = (id) => document.getElementById(id);
+  // Claude のページなど、別ページの中に埋め込まれて表示されているか
+  const inFrame = (() => { try { return window.self !== window.top; } catch (_) { return true; } })();
+  function notify(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.remove("hidden");
+    clearTimeout(notify._t);
+    notify._t = setTimeout(() => t.classList.add("hidden"), 6000);
+  }
   const MAX_WORK = 1600;     // 作業用画像の最大辺(px)
   const MODEL_SIZE = 320;    // U2-Netp の入力サイズ
   const OUT_W = 1400;        // 完成画像の横幅(px)
@@ -257,21 +275,18 @@
     if (sessionPromise) return sessionPromise;
     sessionPromise = (async () => {
       await domReady;
-      if (typeof ort === "undefined") throw new Error("ONNX Runtime が読み込めませんでした");
+      if (typeof window.ort === "undefined") throw new Error("AIの部品が読み込めませんでした（このブラウザでは使えない可能性があります）");
       if (typeof DecompressionStream === "undefined") throw new Error("このブラウザは古いため自動切り抜きに対応していません（iOS 16.4以降 / 新しいChromeをお使いください）");
-      const glue = new TextDecoder().decode(b64ToBytes("ort-glue"));
-      const glueUrl = URL.createObjectURL(new Blob([glue], { type: "text/javascript" }));
       const wasmBin = await gunzip(b64ToBytes("ort-wasm"));
       ort.env.wasm.numThreads = 1;
       ort.env.wasm.proxy = false;
-      ort.env.wasm.wasmPaths = { mjs: glueUrl, wasm: "about:blank" };
       ort.env.wasm.wasmBinary = wasmBin;
       const modelBuf = await gunzip(b64ToBytes("u2netp-model"));
       const session = await ort.InferenceSession.create(modelBuf, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
       return session;
     })();
     sessionPromise.then(
-      () => { $("modelStatus").textContent = "✅ 切り抜き機能の準備ができました（オフラインで動きます）"; },
+      () => { $("modelStatus").textContent = inFrame ? "✅ 切り抜き機能の準備ができました" : "✅ 切り抜き機能の準備ができました（オフラインで動きます）"; },
       (e) => { console.error(e); $("modelStatus").textContent = "⚠️ 自動切り抜きが使えません。手作業で切り抜けます。"; }
     );
     return sessionPromise;
@@ -308,7 +323,7 @@
     try {
       img = await loadImage(file);
     } catch (err) {
-      alert("写真を開けませんでした。別の写真をお試しください。\n（HEIC形式の場合は、カメラの設定を「互換性優先」にすると開けます）");
+      notify("写真を開けませんでした。別の写真をお試しください。（HEIC形式の場合は、カメラの設定を「互換性優先」にすると開けます）");
       showStep(1);
       return;
     }
@@ -989,7 +1004,7 @@
     btn.disabled = true; btn.textContent = "作成中…";
     await new Promise((r) => setTimeout(r, 30));
     try {
-      if (!prepareGyotaku()) { alert("魚の部分が残っていません。「残す」ブラシで魚をなぞってください。"); return; }
+      if (!prepareGyotaku()) { notify("魚の部分が残っていません。「残す」ブラシで魚をなぞってください。"); return; }
       showStep(4);
       renderGyotaku();
     } finally {
@@ -1009,25 +1024,28 @@
 
   $("btnSave").onclick = async () => {
     const blob = await canvasBlob();
-    if (!blob) { alert("画像を作れませんでした。"); return; }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = fileName();
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // 端末によってはダウンロードできないため、長押し保存用の画面も用意
+    if (!blob) { notify("画像を作れませんでした。"); return; }
     const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (isIOS) showOverlay(url);
-    else setTimeout(() => URL.revokeObjectURL(url), 60000);
+    if (!inFrame) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = fileName();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      if (!isIOS) { notify("画像を保存しました（ダウンロードフォルダ）"); return; }
+    }
+    // iPhone や、ダウンロードできない画面では「長押しで保存」の画面を出す
+    showOverlay();
   };
-  function showOverlay(url) {
-    $("saveImg").src = url;
+  function showOverlay() {
+    $("saveImg").src = $("resultCanvas").toDataURL("image/png");
     $("saveOverlay").classList.remove("hidden");
   }
   $("btnCloseOverlay").onclick = () => $("saveOverlay").classList.add("hidden");
 
-  if (navigator.canShare && typeof File !== "undefined") {
+  if (!inFrame && navigator.canShare && typeof File !== "undefined") {
     try {
       const testFile = new File([new Blob(["x"], { type: "image/png" })], "t.png", { type: "image/png" });
       if (navigator.canShare({ files: [testFile] })) $("btnShare").classList.remove("hidden");
@@ -1037,7 +1055,7 @@
     const blob = await canvasBlob();
     const file = new File([blob], fileName(), { type: "image/png" });
     try { await navigator.share({ files: [file], title: "魚拓" }); }
-    catch (e) { if (e && e.name !== "AbortError") alert("共有できませんでした。「画像を保存」をお使いください。"); }
+    catch (e) { if (e && e.name !== "AbortError") notify("共有できませんでした。「画像を保存」をお使いください。"); }
   };
 
   /* ---------------- 初期化 ---------------- */
@@ -1056,8 +1074,7 @@
 </script>
 
 <!-- ===== 以下、オフライン動作のために埋め込んだライブラリとAIモデル ===== -->
-<script>/*__ORT_JS__*/</script>
-<script type="application/octet-stream" id="ort-glue">/*__ORT_GLUE_B64__*/</script>
+<script type="module">/*__ORT_JS__*/</script>
 <script type="application/octet-stream" id="ort-wasm">/*__ORT_WASM_GZ_B64__*/</script>
 <script type="application/octet-stream" id="u2netp-model">/*__MODEL_GZ_B64__*/</script>
 </body>

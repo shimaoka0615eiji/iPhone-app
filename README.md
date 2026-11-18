@@ -5,6 +5,9 @@
 - **`gyotaku.html`** … アプリ本体（この1ファイルだけで動きます。約10MB）
   - 背景除去AI（U²-Netp）と ONNX Runtime Web を内蔵しているため、**オフラインで動作**します。
   - 写真は端末内で処理され、外部へ送信されません。
+- `artifact/gyotaku-artifact.html` … Claude のページ公開用（外側の html/head/body タグを外した版）
+- `artifact/qr.png` … 公開ページ https://claude.ai/artifact/LgFsSRtSZ6RtMNet3cquEs を開く QR コード
+  （非公開ページのため、開くには Claude へのログインが必要。他の人に使ってもらうにはページの「共有」から公開範囲を変更）
 - `src/template.html` … アプリのソース（ライブラリ埋め込み前）
 - `build.py` … ライブラリとモデルを埋め込んで `gyotaku.html` を作るスクリプト
 
